@@ -1,0 +1,33 @@
+.container {
+  max-width: 800px;
+  margin: 40px auto;
+  font-family: Arial, sans-serif;
+}
+
+input {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 8px;
+}
+
+button {
+  margin: 8px;
+  padding: 8px 12px;
+}
+
+.chars {
+  margin: 12px 0;
+}
+
+.chars span {
+  display: inline-block;
+  padding: 8px;
+  margin: 2px;
+  border: 1px solid #ccc;
+}
+
+.highlight {
+  background: yellow;
+  font-weight: bold;
+}
