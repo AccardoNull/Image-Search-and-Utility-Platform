@@ -31,3 +31,32 @@ button {
   background: yellow;
   font-weight: bold;
 }
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.image-card {
+  border: 1px solid #ccc;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+.image-card img {
+  width: 100%;
+  height: 160px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.tag {
+  display: inline-block;
+  margin: 4px;
+  padding: 4px 8px;
+  border: 1px solid #aaa;
+  border-radius: 999px;
+  font-size: 12px;
+}

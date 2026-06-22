@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "filename": "black_cat_sleeping.jpg",
+    "url": "/images/black_cat_sleeping.jpg",
+    "tags": ["cat", "pet", "sleeping", "animal"],
+    "description": "A black cat sleeping on a sofa"
+  },
+  {
+    "id": 2,
+    "filename": "city_road_construction.jpg",
+    "url": "/images/city_road_construction.jpg",
+    "tags": ["road", "construction", "city", "traffic"],
+    "description": "Road construction in a downtown area"
+  }
+]

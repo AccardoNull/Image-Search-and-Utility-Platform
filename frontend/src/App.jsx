@@ -6,6 +6,9 @@ function App() {
   const [pattern, setPattern] = useState("ABABCABAB");
   const [steps, setSteps] = useState([]);
   const [currentStep, setCurrentStep] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [resultCount, setResultCount] = useState(0);
 
   async function runKMP() {
     const response = await fetch("http://127.0.0.1:8000/kmp", {
@@ -22,6 +25,17 @@ function App() {
   }
 
   const step = steps[currentStep];
+
+  async function searchImages() {
+  const response = await fetch(
+    `http://127.0.0.1:8000/search?q=${encodeURIComponent(searchQuery)}`
+  );
+
+  const data = await response.json();
+
+  setSearchResults(data.results);
+  setResultCount(data.count);
+}
 
   return (
     <div className="container">
@@ -84,7 +98,42 @@ function App() {
           </button>
         </>
       )}
-    </div>
+      <hr />
+
+     <h2>Image Search</h2>
+
+     <input
+       value={searchQuery}
+       onChange={(e) => setSearchQuery(e.target.value)}
+       placeholder="Search images by filename, tag, or description"
+     />
+
+     <button onClick={searchImages}>Search</button>
+
+     <p>{resultCount} result(s) found</p>
+
+     <div className="image-grid">
+       {searchResults.map((image) => (
+         <div key={image.id} className="image-card">
+           <img
+             src={`http://127.0.0.1:8000${image.url}`}
+             alt={image.description}
+           />
+
+           <h3>{image.filename}</h3>
+           <p>{image.description}</p>
+
+           <div>
+            {image.tags.map((tag) => (
+               <span key={tag} className="tag">
+                 {tag}
+               </span>
+             ))}
+           </div>
+         </div>
+       ))}
+     </div>
+    </div> 
   );
 }
 
