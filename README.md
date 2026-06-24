@@ -1,4 +1,4 @@
-# Interactive-Algorithm-Visualizer--Image-Search-Platform
+# Interactive-Algorithm-Visualizer-Image-Search-Platform
 ## Overview
 An interactive full-stack web application that visualizes KMP algorithm execution step-by-step to help users understand complex computational processes and utilizes the algorithm's string matching function for quick local image file search. The long-term goal of the platform is to support additional algorithms including DFA simulation and graph traversal algorithms (BFS/DFS), as well as external image search API integration.
 
