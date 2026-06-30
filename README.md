@@ -44,7 +44,7 @@ Built with a React frontend and FastAPI backend, the application automatically i
 - Interactive image gallery with real-time search results and metadata display
 - Clickable image previews and filenames that link directly to original image assets through custom FastAPI preview and open file locations through Windows Explorer integration
   - Added a custom FastAPI preview route to serve image assets with inline display headers for consistent browser preview behavior across JPG, PNG, and WebP files.
-  - Windows Explorer integration is only supported in local Windows execution mode, while Dockerized/live demo supports API, KMP visualization, and image search.
+  - Windows Explorer integration is only supported in local Windows execution mode, while Dockerized/live demo supports KMP visualization, image search, and preview.
 - Automated testing and continuous integration using Pytest, Git, and GitHub Actions
 
 #### Current Architecture
