@@ -39,8 +39,8 @@ Built with a React frontend and FastAPI backend, the application automatically i
 - Search across filenames, tags, descriptions, and indexed file metadata
 - Interactive image gallery with real-time search results and metadata display
 - Clickable image previews and filenames that link directly to original image assets through custom FastAPI preview and open file locations through Windows Explorer integration
- - Added a custom FastAPI preview route to serve image assets with inline display headers for consistent browser preview behavior across JPG, PNG, and WebP files.
- - Windows Explorer integration is only supported in local Windows execution mode, while Dockerized demo supports API, KMP visualization, image indexing, and image search.
+  - Added a custom FastAPI preview route to serve image assets with inline display headers for consistent browser preview behavior across JPG, PNG, and WebP files.
+  - Windows Explorer integration is only supported in local Windows execution mode, while Dockerized demo supports API, KMP visualization, image indexing, and image search.
 - Automated testing and continuous integration using Pytest, Git, and GitHub Actions
 
 #### Current Architecture
@@ -69,10 +69,10 @@ React Search Interface
 #### Usage
 ##### Local Windows execution mode
 - cd backend
- - .\.venv\Scripts\Activate.ps1
- - uvicorn main:app --reload
+  - .\\.venv\Scripts\Activate.ps1
+  - uvicorn main:app --reload
 - cd frontend
- - npm run dev
+  - npm run dev
 ##### Docker
 - docker compose up --build
 
