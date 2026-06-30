@@ -12,12 +12,15 @@ function App() {
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
   async function runKMP() {
-    const response = await fetch("${API_BASE_URL}/kmp", {
+    const response = await fetch(`${API_BASE_URL}/kmp`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ text, pattern }),
+      body: JSON.stringify({ 
+        text: text, 
+        pattern: pattern,
+      }),
     });
 
     const data = await response.json();
@@ -39,7 +42,7 @@ function App() {
 }
 
   async function openFileLocation(filepath) {
-  await fetch("${API_BASE_URL}/open-file", {
+  await fetch(`${API_BASE_URL}/open-file`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
