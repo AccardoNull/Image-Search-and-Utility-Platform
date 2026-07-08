@@ -4,7 +4,7 @@ An interactive full-stack web application that visualizes KMP algorithm executio
 
 ## Demo
 Live Demo: https://interactive-algorithm-visualizer-im.vercel.app/  
-The search/convertion function is currently limited to the sample images stored in the repository, under backend/static/images.
+The search function for live website is currently limited to the sample images stored in the repository, under backend/static/images.
 
 ## Completed features
 ### KMP visualizer
