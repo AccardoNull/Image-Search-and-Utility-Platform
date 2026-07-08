@@ -61,7 +61,7 @@ function App() {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      filepath: image.filepath,
+      filename: image.filename,
       output_format: outputFormat,
     }),
   });

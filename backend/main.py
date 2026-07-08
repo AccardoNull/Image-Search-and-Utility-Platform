@@ -10,6 +10,7 @@ from pathlib import Path
 from PIL import Image
 import uuid
 
+IMAGE_DIR = Path("static/images")
 CONVERTED_DIR = Path("static/converted")
 CONVERTED_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -33,7 +34,7 @@ class OpenFileRequest(BaseModel):
     filepath: str
 
 class ConvertImageRequest(BaseModel):
-    filepath: str
+    filename: str
     output_format: str
 
 @app.get("/")
@@ -98,7 +99,7 @@ def convert_image(request: ConvertImageRequest):
     if output_format not in SUPPORTED_OUTPUTS:
         return {"error": "Unsupported output format"}
 
-    input_path = Path(request.filepath)
+    input_path = IMAGE_DIR / request.filename
 
     if not input_path.exists():
         return {"error": "File does not exist"}
