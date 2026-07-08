@@ -35,13 +35,12 @@ Built with a React frontend and FastAPI backend, the application automatically i
 
 #### Features
 
-- Keyword-based image file search using the KMP string matching algorithm
+- Keyword-based image file search using the KMP string matching algorithm across filenames, tags, descriptions, and indexed file metadata
   - Added a token-based search layer for fuzzy matching. KMP powers exact substring matching, while the search layer handles tokenization, ranking, and flexible query matching.
 - FastAPI backend for search processing, indexing, and metadata retrieval
 - React-based frontend with dynamic query submission and result rendering
 - Static asset serving for image storage and retrieval
 - Automated image indexing pipeline that scans directories and generates searchable metadata records
-- Search across filenames, tags, descriptions, and indexed file metadata
 - Interactive image gallery with real-time search results and metadata display
 - Clickable image previews and filenames that link directly to original image assets through custom FastAPI preview and open file locations through Windows Explorer integration
   - Added a custom FastAPI preview route to serve image assets with inline display headers for consistent browser preview behavior across JPG, PNG, and WebP files.
