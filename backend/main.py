@@ -11,6 +11,7 @@ from PIL import Image
 import shutil
 import uuid
 from fastapi import UploadFile, File, Form
+from search_engine import score_image
 
 IMAGE_DIR = Path("static/images")
 CONVERTED_DIR = Path("static/converted")
@@ -69,22 +70,21 @@ def search_images(q: str):
     with open("data/images.json", "r", encoding="utf-8") as file:
         images = json.load(file)
 
-    results = []
+    scored_results = []
 
     for image in images:
-        searchable_text = " ".join([
-            image["filename"],
-            " ".join(image["tags"]),
-            image["description"]
-        ])
+        score = score_image(image, q)
 
-        if kmp_contains(searchable_text, q):
-            results.append(image)
+        if score > 0:
+            image_with_score = image.copy()
+            image_with_score["score"] = score
+            scored_results.append(image_with_score)
 
+    scored_results.sort(key=lambda item: item["score"], reverse=True)
     return {
         "query": q,
-        "count": len(results),
-        "results": results
+        "count": len(scored_results),
+        "results": scored_results
     }
 
 @app.post("/open-file")
