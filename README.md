@@ -27,11 +27,11 @@ Built with a React frontend and FastAPI backend, the application generates detai
 ![screenshot2](ImageFolder/Screenshot2.jpg)
 ![screenshot3](ImageFolder/Screenshot3.jpg)
 
-### Local Image Search Platform
+### Local Image Utility Platform
 
-An interactive full-stack search application that enables users to locate images files using keyword-based pattern matching across filenames, tags, and descriptive metadata. The framework leverages the Knuth-Morris-Pratt (KMP) string matching algorithm to efficiently identify relevant records and return searchable results through a responsive graphical interface.
+An interactive full-stack application that enables users to locate images files using keyword-based pattern matching across filenames, tags, and descriptive metadata, then convert selected images to different formats. The framework leverages the Knuth-Morris-Pratt (KMP) string matching algorithm to efficiently identify relevant records and return searchable results through a responsive graphical interface.
 
-Built with a React frontend and FastAPI backend, the application automatically indexes image assets, extracts searchable metadata from filenames, and generates a structured search database for efficient retrieval, with Docker implementation for fast deployment. User queries are processed through a custom search engine that performs pattern matching against indexed file records and displays matching images with associated metadata. The project aims to bridge algorithmic pattern matching with practical search engine functionality while providing a foundation for future enhancements such as local file indexing, metadata extraction, AI-generated image captions, and desktop search capabilities.
+Built with a React frontend and FastAPI backend, the application automatically indexes image assets, extracts searchable metadata from filenames, and generates a structured search database for efficient retrieval, with Docker containerization for fast deployment and Pillow for converter functions, as well as cloud deployment through Railway and Vercel. User queries are processed through a custom search engine that performs pattern matching against indexed file records and displays matching images with associated metadata. The project aims to bridge algorithmic pattern matching with practical search engine functionality while providing a foundation for future enhancements such as AI-generated image captions, desktop search capabilities and external search APIs.
 
 #### Features
 
@@ -45,6 +45,7 @@ Built with a React frontend and FastAPI backend, the application automatically i
 - Clickable image previews and filenames that link directly to original image assets through custom FastAPI preview and open file locations through Windows Explorer integration
   - Added a custom FastAPI preview route to serve image assets with inline display headers for consistent browser preview behavior across JPG, PNG, and WebP files.
   - Windows Explorer integration is only supported in local Windows execution mode, while Dockerized/live demo supports KMP visualization, image search, and preview.
+- Format convertion options for the result images using Pillow
 - Automated testing and continuous integration using Pytest, Git, and GitHub Actions
 
 #### Current Architecture
@@ -69,6 +70,7 @@ React Search Interface
 ![screenshot4](ImageFolder/Screenshot4.jpg)
 ![screenshot5](ImageFolder/Screenshot5.jpg)
 ![screenshot6](ImageFolder/Screenshot6.jpg)
+![screenshot7](ImageFolder/Screenshot7.jpg)
 
 ## Local Usage
 ### Set up frontend and backend server
@@ -99,6 +101,7 @@ Backend
 - FastAPI
 - REST APIs
 - Uvicorn
+- Pillow
 
 Development Tools
 - GitHub/GitHub Actions
