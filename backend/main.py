@@ -8,11 +8,15 @@ import subprocess
 from fastapi.responses import FileResponse
 from pathlib import Path
 from PIL import Image
+import shutil
 import uuid
+from fastapi import UploadFile, File, Form
 
 IMAGE_DIR = Path("static/images")
 CONVERTED_DIR = Path("static/converted")
 CONVERTED_DIR.mkdir(parents=True, exist_ok=True)
+UPLOAD_DIR = Path("static/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 SUPPORTED_OUTPUTS = {"png", "jpg", "jpeg", "webp", "ico", "pdf"}
 
@@ -119,6 +123,53 @@ def convert_image(request: ConvertImageRequest):
         save_format = "JPEG"
 
     image.save(output_path, save_format)
+
+    return {
+        "status": "success",
+        "filename": output_filename,
+        "download_url": f"/converted/{output_filename}"
+    }
+
+@app.post("/upload-convert")
+def upload_convert_image(
+    file: UploadFile = File(...),
+    output_format: str = Form(...)
+):
+    output_format = output_format.lower()
+
+    if output_format not in SUPPORTED_OUTPUTS:
+        return {"error": "Unsupported output format"}
+
+    original_suffix = Path(file.filename).suffix.lower()
+
+    if original_suffix not in {".jpg", ".jpeg", ".png", ".webp", ".ico"}:
+        return {"error": "Unsupported input image format"}
+
+    safe_filename = f"{uuid.uuid4().hex}_{file.filename}"
+    upload_path = UPLOAD_DIR / safe_filename
+
+    with open(upload_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    try:
+        image = Image.open(upload_path)
+
+        if output_format in {"jpg", "jpeg", "pdf"}:
+            image = image.convert("RGB")
+
+        output_filename = f"{Path(file.filename).stem}_{uuid.uuid4().hex[:8]}.{output_format}"
+        output_path = CONVERTED_DIR / output_filename
+
+        save_format = output_format.upper()
+
+        if output_format == "jpg":
+            save_format = "JPEG"
+
+        image.save(output_path, save_format)
+
+    finally:
+        if upload_path.exists():
+            upload_path.unlink()
 
     return {
         "status": "success",

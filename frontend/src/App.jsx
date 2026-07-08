@@ -11,6 +11,9 @@ function App() {
   const [resultCount, setResultCount] = useState(0);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const [convertedFiles, setConvertedFiles] = useState({});
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadFormat, setUploadFormat] = useState("png");
+  const [uploadDownloadUrl, setUploadDownloadUrl] = useState("");
 
   async function runKMP() {
     const response = await fetch(`${API_BASE_URL}/kmp`, {
@@ -75,6 +78,30 @@ function App() {
     }));
   } else {
     alert(data.error || "Conversion failed");
+  }
+}
+
+  async function uploadAndConvertImage() {
+  if (!uploadFile) {
+    alert("Please choose an image file first.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", uploadFile);
+  formData.append("output_format", uploadFormat);
+
+  const response = await fetch(`${API_BASE_URL}/upload-convert`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (data.status === "success") {
+    setUploadDownloadUrl(data.download_url);
+  } else {
+    alert(data.error || "Upload conversion failed.");
   }
 }
 
@@ -216,6 +243,44 @@ function App() {
          </div>
        ))}
      </div>
+     <hr />
+
+     <h1>Image Format Converter</h1>
+
+     <input
+       type="file"
+       accept="image/*"
+       onChange={(e) => {
+         setUploadFile(e.target.files[0]);
+         setUploadDownloadUrl("");
+       }}
+     />
+
+     <select
+       value={uploadFormat}
+       onChange={(e) => setUploadFormat(e.target.value)}
+     >
+       <option value="png">PNG</option>
+       <option value="jpg">JPG</option>
+       <option value="webp">WEBP</option>
+       <option value="ico">ICO</option>
+       <option value="pdf">PDF</option>
+     </select>
+
+     <button onClick={uploadAndConvertImage}>
+       Convert Uploaded Image
+     </button>
+
+     {uploadDownloadUrl && (
+       <a
+         href={`${API_BASE_URL}${uploadDownloadUrl}`}
+         target="_blank"
+         rel="noopener noreferrer"
+         download
+       >
+         Download Converted Image
+       </a>
+     )}
     </div> 
   );
 }
