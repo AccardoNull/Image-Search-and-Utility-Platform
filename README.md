@@ -1,10 +1,10 @@
-# Image-Search-Utility-Platform/Algorithm Visualizer
+# Image-Search-and-Utility-Platform/Algorithm Visualizer
 ## Overview
-An interactive full-stack web application that visualizes KMP algorithm execution step-by-step to help users understand complex computational processes and utilizes the algorithm's string matching function for quick local image file search and convertion. The long-term goal of the platform is to support additional algorithms including DFA simulation and graph traversal algorithms (BFS/DFS), as well as external image search API integration.
+An interactive full-stack web application that started as a visualizer showcases KMP algorithm execution step-by-step to help users understand complex computational processes, then evolved into a platform that utilizes the algorithm's string matching function for efficient image file search and convertion. The long-term goal of the platform is to implenment more utility functions such as external image search API integration and file resize/compression, as well as support additional algorithms including DFA simulation and graph traversal algorithms (BFS/DFS).
 
 ## Demo
 Live Demo: https://interactive-algorithm-visualizer-im.vercel.app/  
-The search function for live website is currently limited to the sample images stored in the repository, under backend/static/images.
+The search function on live website is currently limited to the sample images stored in the repository, under backend/static/images.
 
 ## Completed features
 ### KMP visualizer
@@ -27,11 +27,11 @@ Built with a React frontend and FastAPI backend, the application generates detai
 ![screenshot2](ImageFolder/Screenshot2.jpg)
 ![screenshot3](ImageFolder/Screenshot3.jpg)
 
-### Image Search Utility Platform
+### Image Search and Utility Platform
 
 An interactive full-stack application that enables users to locate images files using keyword-based pattern matching across filenames, tags, and descriptive metadata, then convert selected images to different formats. The framework leverages the Knuth-Morris-Pratt (KMP) string matching algorithm to efficiently identify relevant records and return searchable results through a responsive graphical interface.
 
-Built with a React frontend and FastAPI backend, the application automatically indexes image assets, extracts searchable metadata from filenames, and generates a structured search database for efficient retrieval, with Docker containerization for fast deployment and Pillow for format convertions, as well as cloud deployment through Railway and Vercel. User queries are processed through a custom search engine that performs pattern matching against indexed file records and displays matching images with associated metadata. The project aims to bridge algorithmic pattern matching with practical search engine functionality while providing a foundation for future enhancements such as AI-generated image captions, desktop search capabilities and external search APIs.
+Built with a React frontend and FastAPI backend, the application automatically indexes image assets, extracts searchable metadata from filenames, and generates a structured search database for efficient retrieval, with Docker containerization for fast deployment and Pillow for format convertions, as well as cloud deployment through Railway and Vercel. User queries are processed through a custom search engine that performs pattern matching against indexed file records and displays matching images with associated metadata. The project aims to bridge algorithmic pattern matching with practical search engine functionality while providing a foundation for future enhancements such as AI-generated image captions and desktop search capabilities.
 
 #### Features
 

@@ -107,7 +107,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Local Image Utility Platform</h1>
+      <h1>Image Search and Utility Platform</h1>
       <hr />
 
       <h2>KMP Visualizer</h2>
