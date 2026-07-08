@@ -10,6 +10,7 @@ function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [resultCount, setResultCount] = useState(0);
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const [convertedFiles, setConvertedFiles] = useState({});
 
   async function runKMP() {
     const response = await fetch(`${API_BASE_URL}/kmp`, {
@@ -51,6 +52,30 @@ function App() {
       filepath: filepath,
     }),
   });
+}
+
+  async function convertImage(image, outputFormat) {
+  const response = await fetch(`${API_BASE_URL}/convert-image`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      filepath: image.filepath,
+      output_format: outputFormat,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.status === "success") {
+    setConvertedFiles((prev) => ({
+      ...prev,
+      [image.id]: data.download_url,
+    }));
+  } else {
+    alert(data.error || "Conversion failed");
+  }
 }
 
   return (
@@ -158,6 +183,36 @@ function App() {
                </span>
              ))}
            </div>
+           <div className="converter-controls">
+            <select
+              onChange={(e) => {
+               if (e.target.value) {
+                  convertImage(image, e.target.value);
+                }
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Convert to...
+              </option>
+              <option value="png">PNG</option>
+              <option value="jpg">JPG</option>
+              <option value="webp">WEBP</option>
+              <option value="ico">ICO</option>
+              <option value="pdf">PDF</option>
+           </select>
+
+           {convertedFiles[image.id] && (
+              <a
+                href={`${API_BASE_URL}${convertedFiles[image.id]}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                download
+              >
+                Download converted file
+              </a>
+            )}
+          </div>
          </div>
        ))}
      </div>

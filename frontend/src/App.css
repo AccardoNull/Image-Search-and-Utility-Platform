@@ -68,3 +68,19 @@ button {
 .image-filename {
   font-size: 13px;
 }
+
+.converter-controls {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.converter-controls select {
+  padding: 6px;
+}
+
+.converter-controls a {
+  font-size: 12px;
+}
