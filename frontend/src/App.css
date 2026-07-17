@@ -1,6 +1,7 @@
 .container {
-  max-width: 800px;
-  margin: 40px auto;
+  width: 95%;
+  max-width: 1800px;
+  margin: 0 auto;
   font-family: Arial, sans-serif;
 }
 
@@ -62,11 +63,11 @@ button {
 }
 
 .image-description {
-  font-size: 14px;
+  font-size: 11px;
 }
 
 .image-filename {
-  font-size: 13px;
+  font-size: 10px;
 }
 
 .converter-controls {
@@ -83,4 +84,17 @@ button {
 
 .converter-controls a {
   font-size: 12px;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.pagination-controls button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

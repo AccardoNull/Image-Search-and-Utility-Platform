@@ -14,6 +14,15 @@ function App() {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadFormat, setUploadFormat] = useState("png");
   const [uploadDownloadUrl, setUploadDownloadUrl] = useState("");
+  const [onlineQuery, setOnlineQuery] = useState("");
+  const [onlineResults, setOnlineResults] = useState([]);
+  const [onlinePage, setOnlinePage] = useState(0);
+  const [onlineHasNext, setOnlineHasNext] = useState(false);
+  const [onlineLoading, setOnlineLoading] = useState(false);
+  const [onlineError, setOnlineError] = useState("");
+
+  const [onlineConvertedFiles, setOnlineConvertedFiles] = useState({});
+  const [onlineConversionMessages, setOnlineConversionMessages] = useState({});
 
   async function runKMP() {
     const response = await fetch(`${API_BASE_URL}/kmp`, {
@@ -81,7 +90,7 @@ function App() {
   }
 }
 
-  async function uploadAndConvertImage() {
+async function uploadAndConvertImage() {
   if (!uploadFile) {
     alert("Please choose an image file first.");
     return;
@@ -102,6 +111,119 @@ function App() {
     setUploadDownloadUrl(data.download_url);
   } else {
     alert(data.error || "Upload conversion failed.");
+  }
+}
+
+async function searchOnlineImages(page = 0) {
+  const cleanedQuery = onlineQuery.trim();
+
+  if (!cleanedQuery) {
+    setOnlineError("Enter an online image search query.");
+    return;
+  }
+
+  setOnlineLoading(true);
+  setOnlineError("");
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/search-online` +
+      `?q=${encodeURIComponent(cleanedQuery)}` +
+      `&page=${page}`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Online image search failed."
+      );
+    }
+
+    setOnlineResults(data.results ?? []);
+    setOnlinePage(data.page ?? page);
+    setOnlineHasNext(Boolean(data.has_next));
+
+    setOnlineConvertedFiles({});
+    setOnlineConversionMessages({});
+  } catch (error) {
+    setOnlineResults([]);
+    setOnlineHasNext(false);
+    setOnlineError(error.message);
+  } finally {
+    setOnlineLoading(false);
+  }
+}
+
+async function handleSearch() {
+  if (searchSource === "local") {
+    await searchImages();
+    setOnlineResults([]);
+    return;
+  }
+
+  if (searchSource === "online") {
+    setSearchResults([]);
+    await searchOnlineImages(0);
+    return;
+  }
+
+  await Promise.all([
+    searchImages(),
+    searchOnlineImages(0),
+  ]);
+}
+
+async function convertOnlineImage(image, outputFormat) {
+  setOnlineConversionMessages((previous) => ({
+    ...previous,
+    [image.id]: "Downloading and converting...",
+  }));
+
+  setOnlineConvertedFiles((previous) => {
+    const updated = { ...previous };
+    delete updated[image.id];
+    return updated;
+  });
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/convert-online-image`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image_url: image.full_url,
+          output_format: outputFormat,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Online image conversion failed."
+      );
+    }
+
+    setOnlineConvertedFiles((previous) => ({
+      ...previous,
+      [image.id]: data.download_url,
+    }));
+
+    setOnlineConversionMessages((previous) => ({
+      ...previous,
+      [image.id]: "Conversion complete.",
+    }));
+
+  } catch (error) {
+    setOnlineConversionMessages((previous) => ({
+      ...previous,
+      [image.id]: error.message,
+    }));
   }
 }
 
@@ -171,8 +293,8 @@ function App() {
       )}
       <hr />
 
-     <h2>Image Search</h2>
-
+     <section className="search-section">
+     <h2>Local Image Search</h2>
      <input
        value={searchQuery}
        onChange={(e) => setSearchQuery(e.target.value)}
@@ -246,6 +368,144 @@ function App() {
          </div>
        ))}
      </div>
+    </section>
+     <section className="search-section online-search-section">
+      <h2>Online Image Search</h2>
+
+      <div className="search-controls">
+        <input
+          type="text"
+          value={onlineQuery}
+          onChange={(event) => setOnlineQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              searchOnlineImages(0);
+            }
+          }}
+          placeholder="Search Google Images..."
+        />
+
+        <button
+          type="button"
+          onClick={() => searchOnlineImages(0)}
+          disabled={onlineLoading}
+        >
+          {onlineLoading ? "Searching..." : "Search Online"}
+        </button>
+      </div>
+
+      {onlineLoading && <p>Searching online...</p>}
+
+      {onlineError && (
+        <p className="error-message">
+          {onlineError}
+        </p>
+      )}
+
+      <div className="image-grid">
+        {onlineResults.map((image) => (
+          <article key={image.id} className="image-card">
+            <a
+              href={image.full_url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <img
+                src={image.thumbnail_url}
+                alt={image.title || "Online image"}
+                loading="lazy"
+              />
+            </a>
+
+            <h3>{image.title}</h3>
+
+            {image.source_name && (
+              <p className="image-description">
+                Source: {image.source_name}
+              </p>
+            )}
+
+            {image.width && image.height && (
+              <p className="image-description">
+                {image.width} × {image.height}
+              </p>
+            )}
+
+            {image.source_page && (
+              <a
+                href={image.source_page}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open source page
+              </a>
+            )}
+
+            <div className="converter-controls">
+              <select
+                defaultValue=""
+                onChange={(event) => {
+                  const format = event.target.value;
+
+                  if (format) {
+                    convertOnlineImage(image, format);
+                  }
+                }}
+              >
+                <option value="" disabled>
+                  Convert to...
+                </option>
+
+                <option value="png">PNG</option>
+                <option value="jpg">JPG</option>
+                <option value="webp">WEBP</option>
+                <option value="ico">ICO</option>
+                <option value="pdf">PDF</option>
+              </select>
+
+              {onlineConversionMessages[image.id] && (
+                <p className="image-description">
+                  {onlineConversionMessages[image.id]}
+                </p>
+              )}
+
+              {onlineConvertedFiles[image.id] && (
+                <a
+                  href={`${API_BASE_URL}${onlineConvertedFiles[image.id]}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download
+                >
+                  Download converted image
+                </a>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {onlineResults.length > 0 && (
+        <div className="pagination-controls">
+          <button
+            type="button"
+            disabled={onlineLoading || onlinePage === 0}
+            onClick={() => searchOnlineImages(onlinePage - 1)}
+          >
+            Previous
+          </button>
+
+          <span>Page {onlinePage + 1}</span>
+
+          <button
+            type="button"
+            disabled={onlineLoading || !onlineHasNext}
+            onClick={() => searchOnlineImages(onlinePage + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </section>
      <hr />
 
      <h2>Image Format Converter</h2>
@@ -284,7 +544,8 @@ function App() {
          Download Converted Image
        </a>
      )}
-    </div> 
+    </div>
+     
   );
 }
 
