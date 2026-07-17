@@ -84,7 +84,7 @@ Local Windows execution mode
   - .\\.venv\Scripts\Activate.ps1
     - uvicorn main:app --reload
 - cd frontend
-  - npm run dev
+  - npm run dev  
 Docker
 - docker compose up --build
 
