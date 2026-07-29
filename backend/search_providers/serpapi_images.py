@@ -14,7 +14,7 @@ class ExternalSearchError(Exception):
 async def search_google_images(
     query: str,
     page: int = 0,
-    safe_search: str = "active",
+    safe_search: str = "",
 ) -> list[dict[str, Any]]:
     api_key = os.getenv("SERPAPI_API_KEY")
 
@@ -31,9 +31,11 @@ async def search_google_images(
         "q": cleaned_query,
         "api_key": api_key,
         "ijn": page,
-        "safe": safe_search,
         "no_cache": "false",
     }
+
+    if safe_search != "":
+        params["safe"] = safe_search
 
     try:
         async with httpx.AsyncClient(timeout=25.0) as client:

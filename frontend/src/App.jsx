@@ -2,6 +2,7 @@ import { useState } from "react";
 import "./App.css";
 
 function App() {
+  const [activeTab, setActiveTab] = useState("online");
   const [text, setText] = useState("ABABDABACDABABCABAB");
   const [pattern, setPattern] = useState("ABABCABAB");
   const [steps, setSteps] = useState([]);
@@ -230,9 +231,39 @@ async function convertOnlineImage(image, outputFormat) {
   return (
     <div className="container">
       <h1>Image Search & Utility Platform</h1>
-      <hr />
+      <nav className="toolbar">
+        <button
+          className={activeTab === "online" ? "active-tab" : ""}
+          onClick={() => setActiveTab("online")}
+        >
+          Online Search
+        </button>
 
-      <h2>KMP Visualizer</h2>
+        <button
+          className={activeTab === "local" ? "active-tab" : ""}
+          onClick={() => setActiveTab("local")}
+        >
+          Local Search
+        </button>
+
+        <button
+          className={activeTab === "converter" ? "active-tab" : ""}
+          onClick={() => setActiveTab("converter")}
+        >
+          Image Converter
+        </button>
+
+        <button
+          className={activeTab === "kmp" ? "active-tab" : ""}
+          onClick={() => setActiveTab("kmp")}
+        >
+          KMP Visualizer
+        </button>
+      </nav>
+      <hr />
+      {activeTab === "kmp" && (
+      <>
+      <h2>KMP Algorithm Visualizer</h2>
 
       <label>Text:</label>
       <input value={text} onChange={(e) => setText(e.target.value)} />
@@ -291,9 +322,11 @@ async function convertOnlineImage(image, outputFormat) {
           </button>
         </>
       )}
-      <hr />
+      </>
+      )}
 
-     <section className="search-section">
+     {activeTab === "local" && (
+      <>
      <h2>Local Image Search</h2>
      <input
        value={searchQuery}
@@ -368,8 +401,10 @@ async function convertOnlineImage(image, outputFormat) {
          </div>
        ))}
      </div>
-    </section>
-     <section className="search-section online-search-section">
+    </>
+     )}
+      {activeTab === "online" && (
+      <>
       <h2>Online Image Search</h2>
 
       <div className="search-controls">
@@ -505,9 +540,11 @@ async function convertOnlineImage(image, outputFormat) {
           </button>
         </div>
       )}
-    </section>
-     <hr />
+     </>
+      )}
 
+     {activeTab === "converter" && (
+     <> 
      <h2>Image Format Converter</h2>
 
      <input
@@ -544,8 +581,9 @@ async function convertOnlineImage(image, outputFormat) {
          Download Converted Image
        </a>
      )}
+     </>
+     )}
     </div>
-     
   );
 }
 

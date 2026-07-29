@@ -98,3 +98,33 @@ button {
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+.toolbar {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+}
+
+.toolbar button {
+    flex: 1;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: white;
+    cursor: pointer;
+    color: black;
+    font-weight: bold;
+    transition: 0.2s;
+}
+
+.toolbar button:hover {
+    background: #f3f3f3;
+}
+
+.active-tab {
+    background: #0078d4;
+    color: white;
+    border-color: #0078d4;
+}
