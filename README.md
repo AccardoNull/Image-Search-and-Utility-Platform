@@ -58,6 +58,21 @@ React Search Interface
 ##### Online image search:  
 ![screenshot3](ImageFolder/Screenshot3.jpg)
 
+### KMP visualizer
+
+a Knuth-Morris-Pratt (KMP) string matching visualizer that demonstrates pattern searching, prefix table construction, and character-by-character comparisons through an intuitive graphical interface.
+
+Built with a React frontend and FastAPI backend, the application generates detailed execution traces that allow users to navigate algorithm states, inspect internal variables, and observe how algorithm decisions evolve over time. The project aims to make fundamental computer science concepts more accessible through interactive visualization and real-time feedback.
+
+#### Features
+- Step-by-step visualization of the KMP string matching algorithm
+- Interactive text and pattern comparison highlighting
+- Dynamic LPS (Longest Prefix Suffix) table construction display
+- Forward and backward navigation through algorithm execution states
+- FastAPI backend that generates structured execution traces
+- React-based frontend with real-time visualization updates
+- Automated testing and continuous integration using Pytest, Git and GitHub Actions
+
 ## Local Setup
 ### Activate frontend and backend servers
 Local Windows execution mode 
@@ -74,21 +89,6 @@ Docker
 Store images under backend/static/images, then run:
 - cd backend
   - py index_images.py
-
-### KMP visualizer
-
-a Knuth-Morris-Pratt (KMP) string matching visualizer that demonstrates pattern searching, prefix table construction, and character-by-character comparisons through an intuitive graphical interface.
-
-Built with a React frontend and FastAPI backend, the application generates detailed execution traces that allow users to navigate algorithm states, inspect internal variables, and observe how algorithm decisions evolve over time. The project aims to make fundamental computer science concepts more accessible through interactive visualization and real-time feedback.
-
-#### Features
-- Step-by-step visualization of the KMP string matching algorithm
-- Interactive text and pattern comparison highlighting
-- Dynamic LPS (Longest Prefix Suffix) table construction display
-- Forward and backward navigation through algorithm execution states
-- FastAPI backend that generates structured execution traces
-- React-based frontend with real-time visualization updates
-- Automated testing and continuous integration using Pytest, Git and GitHub Actions
 
 ## Tech Stack
 
