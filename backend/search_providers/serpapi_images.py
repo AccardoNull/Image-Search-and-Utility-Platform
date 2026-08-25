@@ -31,7 +31,7 @@ async def search_google_images(
         "q": cleaned_query,
         "api_key": api_key,
         "ijn": page,
-        "no_cache": "true",
+        "no_cache": "false",
     }
 
     if safe_search != "":
