@@ -22,9 +22,12 @@ def test_kmp_endpoint():
 def test_search_endpoint():
     response = client.get("/search?q=cat")
 
-    assert response.status_code == 200
+    assert response.status_code == 422
+
     data = response.json()
 
-    assert "query" in data
-    assert "count" in data
-    assert "results" in data
+    assert "detail" in data
+    assert any(
+        error.get("loc") == ["query", "session_id"]
+        for error in data["detail"]
+    )
