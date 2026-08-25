@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import "./App.css";
 
 function App() {
+
+  const folderInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState("online");
   const [text, setText] = useState("ABABDABACDABABCABAB");
   const [pattern, setPattern] = useState("ABABCABAB");
@@ -10,11 +12,15 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [resultCount, setResultCount] = useState(0);
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:8000";
   const [convertedFiles, setConvertedFiles] = useState({});
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadFormat, setUploadFormat] = useState("png");
   const [uploadDownloadUrl, setUploadDownloadUrl] = useState("");
+  const [localPage, setLocalPage] = useState(0);
+  const LOCAL_RESULTS_PER_PAGE = 12;
   const [onlineQuery, setOnlineQuery] = useState("");
   const [onlineResults, setOnlineResults] = useState([]);
   const [onlinePage, setOnlinePage] = useState(0);
@@ -24,6 +30,27 @@ function App() {
 
   const [onlineConvertedFiles, setOnlineConvertedFiles] = useState({});
   const [onlineConversionMessages, setOnlineConversionMessages] = useState({});
+
+  const [folderSessionId, setFolderSessionId] = useState("");
+  const [indexedImageCount, setIndexedImageCount] = useState(0);
+  const [isUploadingFolder, setIsUploadingFolder] = useState(false);
+  const [isSearchingFolder, setIsSearchingFolder] = useState(false);
+  const [folderUploadProgress, setFolderUploadProgress] = useState("");
+  const [folderError, setFolderError] = useState("");
+
+  const SUPPORTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/bmp",
+  "image/tiff",
+  "image/x-icon",
+]);
+
+  const MAX_FILES = 250;
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+  const MAX_TOTAL_SIZE = 200 * 1024 * 1024;
 
   async function runKMP() {
     const response = await fetch(`${API_BASE_URL}/kmp`, {
@@ -45,14 +72,57 @@ function App() {
   const step = steps[currentStep];
 
   async function searchImages() {
-  const response = await fetch(
-    `${API_BASE_URL}/search?q=${encodeURIComponent(searchQuery)}`
-  );
+  const cleanedQuery = searchQuery.trim();
 
-  const data = await response.json();
+  if (!folderSessionId) {
+    setFolderError(
+      "Select and upload an image folder first.",
+    );
+    return;
+  }
 
-  setSearchResults(data.results);
-  setResultCount(data.count);
+  if (!cleanedQuery) {
+    setFolderError("Enter a search term.");
+    return;
+  }
+
+  setFolderError("");
+  setIsSearchingFolder(true);
+
+  try {
+    const params = new URLSearchParams({
+      q: cleanedQuery,
+      session_id: folderSessionId,
+    });
+
+    const response = await fetch(
+      `${API_BASE_URL}/search?${params.toString()}`,
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Local image search failed.",
+      );
+    }
+
+    setSearchResults(data.results ?? []);
+    setResultCount(data.count ?? 0);
+    setLocalPage(0);
+    setConvertedFiles({});
+  } catch (error) {
+    setSearchResults([]);
+    setResultCount(0);
+
+    setFolderError(
+      error instanceof Error
+        ? error.message
+        : "Unable to search the uploaded folder.",
+    );
+  } finally {
+    setIsSearchingFolder(false);
+  }
 }
 
   async function openFileLocation(filepath) {
@@ -68,26 +138,42 @@ function App() {
 }
 
   async function convertImage(image, outputFormat) {
-  const response = await fetch(`${API_BASE_URL}/convert-image`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      filename: image.filename,
-      output_format: outputFormat,
-    }),
-  });
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/convert-image`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          session_id: folderSessionId,
+          relative_path: image.relative_path,
+          output_format: outputFormat,
+        }),
+      },
+    );
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (data.status === "success") {
-    setConvertedFiles((prev) => ({
-      ...prev,
+    if (!response.ok) {
+      throw new Error(
+        data.detail ||
+          data.error ||
+          "Conversion failed.",
+      );
+    }
+
+    setConvertedFiles((previous) => ({
+      ...previous,
       [image.id]: data.download_url,
     }));
-  } else {
-    alert(data.error || "Conversion failed");
+  } catch (error) {
+    setFolderError(
+      error instanceof Error
+        ? error.message
+        : "Image conversion failed.",
+    );
   }
 }
 
@@ -228,6 +314,158 @@ async function convertOnlineImage(image, outputFormat) {
   }
 }
 
+async function handleFolderUpload(event) {
+  const selectedFiles = Array.from(
+    event.target.files || [],
+  );
+
+  setFolderError("");
+  setSearchResults([]);
+  setResultCount(0);
+  setLocalPage(0);
+  setConvertedFiles({});
+  setIndexedImageCount(0);
+
+  const imageFiles = selectedFiles.filter((file) =>
+    SUPPORTED_IMAGE_TYPES.has(file.type),
+  );
+
+  if (imageFiles.length === 0) {
+    setFolderError(
+      "The selected folder contains no supported images.",
+    );
+    return;
+  }
+
+  if (imageFiles.length > MAX_FILES) {
+    setFolderError(
+      `Select no more than ${MAX_FILES} images.`,
+    );
+    return;
+  }
+
+  const oversizedFile = imageFiles.find(
+    (file) => file.size > MAX_FILE_SIZE,
+  );
+
+  if (oversizedFile) {
+    setFolderError(
+      `${oversizedFile.name} exceeds the 10 MB limit.`,
+    );
+    return;
+  }
+
+  const totalSize = imageFiles.reduce(
+    (sum, file) => sum + file.size,
+    0,
+  );
+
+  if (totalSize > MAX_TOTAL_SIZE) {
+    setFolderError(
+      "The selected folder exceeds the 200 MB limit.",
+    );
+    return;
+  }
+
+  const sessionId = crypto.randomUUID();
+  const formData = new FormData();
+
+  formData.append("session_id", sessionId);
+
+  for (const file of imageFiles) {
+    formData.append("files", file);
+    formData.append(
+      "relative_paths",
+      file.webkitRelativePath || file.name,
+    );
+  }
+
+  setIsUploadingFolder(true);
+  setFolderUploadProgress(
+    `Uploading and indexing ${imageFiles.length} images...`,
+  );
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/upload-folder`,
+      {
+        method: "POST",
+        body: formData,
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Folder upload failed.",
+      );
+    }
+
+    setFolderSessionId(data.session_id);
+    setIndexedImageCount(data.indexed_count);
+    setFolderUploadProgress(
+      `${data.indexed_count} images indexed and ready to search.`,
+    );
+  } catch (error) {
+    setFolderSessionId("");
+    setFolderError(
+      error instanceof Error
+        ? error.message
+        : "Unable to upload the selected folder.",
+    );
+  } finally {
+    setIsUploadingFolder(false);
+  }
+}
+
+async function clearUploadedFolder() {
+  if (folderSessionId) {
+    try {
+      await fetch(
+        `${API_BASE_URL}/uploaded-folder/${folderSessionId}`,
+        {
+          method: "DELETE",
+        },
+      );
+    } catch (error) {
+      console.error(
+        "Unable to clean up upload session:",
+        error,
+      );
+    }
+  }
+
+  setFolderSessionId("");
+  setIndexedImageCount(0);
+  setSearchQuery("");
+  setSearchResults([]);
+  setResultCount(0);
+  setLocalPage(0);
+  setConvertedFiles({});
+  setFolderUploadProgress("");
+  setFolderError("");
+
+  if (folderInputRef.current) {
+    folderInputRef.current.value = "";
+  }
+}
+
+const localStartIndex =
+  localPage * LOCAL_RESULTS_PER_PAGE;
+
+const localEndIndex =
+  localStartIndex + LOCAL_RESULTS_PER_PAGE;
+
+const paginatedLocalResults =
+  searchResults.slice(
+    localStartIndex,
+    localEndIndex
+  );
+
+const localHasNext =
+  localEndIndex < searchResults.length;
+
   return (
     <div className="container">
       <h1>Image Search & Utility Platform</h1>
@@ -250,14 +488,14 @@ async function convertOnlineImage(image, outputFormat) {
           className={activeTab === "converter" ? "active-tab" : ""}
           onClick={() => setActiveTab("converter")}
         >
-          Image Converter
+          Format Converter
         </button>
 
         <button
           className={activeTab === "kmp" ? "active-tab" : ""}
           onClick={() => setActiveTab("kmp")}
         >
-          KMP Visualizer
+          Algorithm Visualizer
         </button>
       </nav>
       <hr />
@@ -326,56 +564,189 @@ async function convertOnlineImage(image, outputFormat) {
       )}
 
      {activeTab === "local" && (
-      <>
-     <h2>Local Image Search</h2>
-     <input
-       value={searchQuery}
-       onChange={(e) => setSearchQuery(e.target.value)}
-       placeholder="Search images by filename, tag, or description"
-     />
+  <>
+    <h2>Local Image Search</h2>
 
-     <button onClick={searchImages}>Search</button>
+    <div className="folder-upload-controls">
+      <label className="folder-upload-button">
+        Select Image Folder
 
-     <p>{resultCount} result(s) found</p>
+        <input
+          ref={folderInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          webkitdirectory=""
+          directory=""
+          onChange={handleFolderUpload}
+          disabled={isUploadingFolder}
+        />
+      </label>
 
-     <div className="image-grid">
-       {searchResults.map((image) => (
-         <div key={image.id} className="image-card">
-           <a
-            href={`${API_BASE_URL}/preview/${image.filename}`}
+      {folderSessionId && (
+        <button
+          type="button"
+          onClick={clearUploadedFolder}
+          disabled={isUploadingFolder}
+        >
+          Clear Folder
+        </button>
+      )}
+    </div>
+
+    {isUploadingFolder && (
+      <p>{folderUploadProgress}</p>
+    )}
+
+    {!isUploadingFolder &&
+      indexedImageCount > 0 && (
+        <p>
+          {indexedImageCount} images indexed and ready
+          to search
+        </p>
+      )}
+
+    {folderError && (
+      <p className="error-message">
+        {folderError}
+      </p>
+    )}
+
+    <div className="search-controls">
+      <input
+        value={searchQuery}
+        onChange={(event) =>
+          setSearchQuery(event.target.value)
+        }
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            searchImages();
+          }
+        }}
+        placeholder="Search by filename, folder, tag, or description"
+        disabled={
+          !folderSessionId ||
+          isUploadingFolder ||
+          isSearchingFolder
+        }
+      />
+
+      <button
+        type="button"
+        onClick={searchImages}
+        disabled={
+          !folderSessionId ||
+          isUploadingFolder ||
+          isSearchingFolder
+        }
+      >
+        {isSearchingFolder
+          ? "Searching..."
+          : "Search"}
+      </button>
+    </div>
+
+    {folderSessionId && (
+      <p>{resultCount} result(s) found</p>
+    )}
+
+{searchResults.length > 0 && (
+  <div className="pagination-controls">
+    <button
+      type="button"
+      disabled={localPage === 0}
+      onClick={() =>
+        setLocalPage((previous) => previous - 1)
+      }
+    >
+      Previous
+    </button>
+
+    <span>Page {localPage + 1}</span>
+
+    <button
+      type="button"
+      disabled={!localHasNext}
+      onClick={() =>
+        setLocalPage((previous) => previous + 1)
+      }
+    >
+      Next
+    </button>
+  </div>
+)}
+
+    <div className="image-grid">
+      {paginatedLocalResults.map((image) => (
+        <article
+          key={image.id}
+          className="image-card"
+        >
+          <a
+            href={`${API_BASE_URL}${image.url}`}
             target="_blank"
             rel="noopener noreferrer"
           >
             <img
               src={`${API_BASE_URL}${image.url}`}
-              alt={image.description}
+              alt={
+                image.description ||
+                image.filename
+              }
+              loading="lazy"
             />
           </a>
 
-           <h3 className="image-filename"
-               style={{cursor: "pointer"}}
-               onClick={() => openFileLocation(image.filepath)}>
-               {image.filename}
-           </h3>
-           <p className="image-description">
-               {image.description}
-           </p>
+          <h3 className="image-filename">
+            <a
+              href={`${API_BASE_URL}${image.url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {image.filename}
+            </a>
+          </h3>
 
-           <div>
-            {image.tags.map((tag) => (
-               <span key={tag} className="tag">
-                 {tag}
-               </span>
-             ))}
-           </div>
-           <div className="converter-controls">
+          {image.description && (
+            <p className="image-description">
+              {image.description}
+            </p>
+          )}
+
+          {image.relative_path && (
+            <p className="image-description">
+              {image.relative_path}
+            </p>
+          )}
+
+          {Array.isArray(image.tags) &&
+            image.tags.length > 0 && (
+              <div>
+                {image.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="tag"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+
+          <div className="converter-controls">
             <select
-              onChange={(e) => {
-               if (e.target.value) {
-                  convertImage(image, e.target.value);
+              defaultValue=""
+              onChange={(event) => {
+                const outputFormat =
+                  event.target.value;
+
+                if (outputFormat) {
+                  convertImage(
+                    image,
+                    outputFormat,
+                  );
                 }
               }}
-              defaultValue=""
             >
               <option value="" disabled>
                 Convert to...
@@ -385,9 +756,9 @@ async function convertOnlineImage(image, outputFormat) {
               <option value="webp">WEBP</option>
               <option value="ico">ICO</option>
               <option value="pdf">PDF</option>
-           </select>
+            </select>
 
-           {convertedFiles[image.id] && (
+            {convertedFiles[image.id] && (
               <a
                 href={`${API_BASE_URL}${convertedFiles[image.id]}`}
                 target="_blank"
@@ -398,11 +769,36 @@ async function convertOnlineImage(image, outputFormat) {
               </a>
             )}
           </div>
-         </div>
-       ))}
-     </div>
-    </>
-     )}
+        </article>
+      ))}
+    </div>
+{searchResults.length > 0 && (
+  <div className="pagination-controls">
+    <button
+      type="button"
+      disabled={localPage === 0}
+      onClick={() =>
+        setLocalPage((previous) => previous - 1)
+      }
+    >
+      Previous
+    </button>
+
+    <span>Page {localPage + 1}</span>
+
+    <button
+      type="button"
+      disabled={!localHasNext}
+      onClick={() =>
+        setLocalPage((previous) => previous + 1)
+      }
+    >
+      Next
+    </button>
+  </div>
+)}
+  </>
+)}
       {activeTab === "online" && (
       <>
       <h2>Online Image Search</h2>
@@ -437,20 +833,45 @@ async function convertOnlineImage(image, outputFormat) {
         </p>
       )}
 
+      {onlineResults.length > 0 && (
+        <div className="pagination-controls">
+          <button
+            type="button"
+            disabled={onlineLoading || onlinePage === 0}
+            onClick={() => searchOnlineImages(onlinePage - 1)}
+          >
+            Previous
+          </button>
+
+          <span>Page {onlinePage + 1}</span>
+
+          <button
+            type="button"
+            disabled={onlineLoading || !onlineHasNext}
+            onClick={() => searchOnlineImages(onlinePage + 1)}
+          >
+            Next
+          </button>
+        </div>
+      )}
+
       <div className="image-grid">
         {onlineResults.map((image) => (
           <article key={image.id} className="image-card">
-            <a
-              href={image.full_url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <img
-                src={image.thumbnail_url}
-                alt={image.title || "Online image"}
-                loading="lazy"
-              />
-            </a>
+           <a
+             href={
+               `${API_BASE_URL}/preview-online?url=` +
+               encodeURIComponent(image.full_url)
+             }
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             <img
+               src={image.thumbnail_url}
+               alt={image.title || "Online image"}
+               loading="lazy"
+             />
+           </a>
 
             <h3>{image.title}</h3>
 

@@ -1,63 +1,75 @@
 import json
 from pathlib import Path
-from datetime import datetime
+from typing import Any
 
-IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-
-IMAGE_DIR = Path("static/images")
-OUTPUT_FILE = Path("data/images.json")
-
-
-def filename_to_tags(filename: str) -> list[str]:
-    stem = Path(filename).stem
-    words = stem.replace("-", "_").split("_")
-
-    tags = []
-
-    for word in words:
-        cleaned = word.strip().lower()
-        if cleaned:
-            tags.append(cleaned)
-
-    return tags
+SUPPORTED_EXTENSIONS = {
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".gif",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".ico",
+}
 
 
-def build_image_index() -> list[dict]:
-    images = []
+def build_image_index(
+    image_directory: Path,
+    output_file: Path,
+    preview_base_url: str,
+) -> list[dict[str, Any]]:
+    image_directory = image_directory.resolve()
+    records: list[dict[str, Any]] = []
 
-    for index, image_path in enumerate(IMAGE_DIR.iterdir(), start=1):
-        if image_path.suffix.lower() not in IMAGE_EXTENSIONS:
+    for file_path in image_directory.rglob("*"):
+        if not file_path.is_file():
             continue
 
-        stat = image_path.stat()
+        extension = file_path.suffix.lower()
 
-        image_record = {
-            "id": index,
-            "filename": image_path.name,
-            "url": f"/images/{image_path.name}",
-            "filepath": str(image_path),
-            "extension": image_path.suffix.lower(),
-            "size_bytes": stat.st_size,
-            "last_modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-            "tags": filename_to_tags(image_path.name),
-            "description": " ".join(filename_to_tags(image_path.name)),
+        if extension not in SUPPORTED_EXTENSIONS:
+            continue
+
+        relative_path = file_path.relative_to(image_directory).as_posix()
+
+        record = {
+            "id": len(records) + 1,
+            "filename": file_path.name,
+            "relative_path": relative_path,
+            "filepath": relative_path,
+            "extension": extension.lstrip("."),
+            "size": file_path.stat().st_size,
+            "url": f"{preview_base_url}/{relative_path}",
+            "description": file_path.stem.replace("_", " ").replace("-", " "),
+            "tags": create_tags(file_path),
         }
 
-        images.append(image_record)
+        records.append(record)
 
-    return images
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_file.open("w", encoding="utf-8") as file:
+        json.dump(records, file, indent=2, ensure_ascii=False)
+
+    return records
 
 
-def main():
-    OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
+def create_tags(relative_path: str) -> list[str]:
+    path = Path(relative_path)
 
-    images = build_image_index()
-
-    with open(OUTPUT_FILE, "w", encoding="utf-8") as file:
-        json.dump(images, file, indent=2)
-
-    print(f"Indexed {len(images)} image(s) into {OUTPUT_FILE}")
-
+    return sorted(set(
+        path.stem
+        .replace("_", " ")
+        .replace("-", " ")
+        .lower()
+        .split()
+    ))
 
 if __name__ == "__main__":
-    main()
+    build_image_index(
+        image_directory=Path("static/images"),
+        output_file=Path("data/images.json"),
+        preview_base_url="/images",
+    )

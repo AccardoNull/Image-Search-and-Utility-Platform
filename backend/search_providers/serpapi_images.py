@@ -14,7 +14,7 @@ class ExternalSearchError(Exception):
 async def search_google_images(
     query: str,
     page: int = 0,
-    safe_search: str = "",
+    safe_search: str = "off",
 ) -> list[dict[str, Any]]:
     api_key = os.getenv("SERPAPI_API_KEY")
 

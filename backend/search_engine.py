@@ -15,7 +15,7 @@ def score_image(image: dict, query: str) -> int:
         image.get("filename", ""),
         " ".join(image.get("tags", [])),
         image.get("description", ""),
-        image.get("filepath", "")
+        image.get("relative_path", "")
     ])
 
     normalized_text = normalize(searchable_text)

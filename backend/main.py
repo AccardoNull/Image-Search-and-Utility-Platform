@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from algorithms.kmp import kmp_steps, kmp_contains
 from fastapi.middleware.cors import CORSMiddleware
 import subprocess
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pathlib import Path
 from PIL import Image, UnidentifiedImageError
 import shutil
@@ -22,9 +22,16 @@ from search_providers.serpapi_images import (
     ExternalSearchError,
     search_google_images,
 )
+from index_images import build_image_index
+from typing import Annotated
+from uuid import UUID
+from fastapi import BackgroundTasks
+from mimetypes import guess_type
 
 load_dotenv()
 
+UPLOAD_ROOT = Path("temporary_uploads")
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
 IMAGE_DIR = Path("static/images")
 CONVERTED_DIR = Path("static/converted")
 CONVERTED_DIR.mkdir(parents=True, exist_ok=True)
@@ -55,6 +62,20 @@ ALLOWED_REMOTE_IMAGE_TYPES = {
 MAX_REMOTE_IMAGE_SIZE = 15 * 1024 * 1024
 MAX_REDIRECTS = 3
 
+MAX_FILES = 250
+MAX_FILE_SIZE = 10 * 1024 * 1024
+MAX_TOTAL_SIZE = 200 * 1024 * 1024
+
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/bmp",
+    "image/tiff",
+    "image/x-icon",
+}
+
 app = FastAPI()
 
 app.add_middleware(
@@ -72,12 +93,13 @@ class KMPRequest(BaseModel):
 class OpenFileRequest(BaseModel):
     filepath: str
 
-class ConvertImageRequest(BaseModel):
-    filename: str
-    output_format: str
-
 class ConvertOnlineImageRequest(BaseModel):
     image_url: str
+    output_format: str
+
+class UploadedImageConversionRequest(BaseModel):
+    session_id: str
+    relative_path: str
     output_format: str
 
 @app.get("/")
@@ -92,37 +114,96 @@ def run_kmp(request: KMPRequest):
 
 app.mount("/images", StaticFiles(directory="static/images"), name="images")
 
-@app.get("/preview/{filename}")
-def preview_image(filename: str):
-    file_path = Path("static/images") / filename
+@app.get(
+    "/uploaded-images/{session_id}/{relative_path:path}"
+)
+def preview_uploaded_image(
+    session_id: str,
+    relative_path: str,
+):
+    safe_session_id = validate_session_id(session_id)
+    safe_relative_path = sanitize_relative_path(relative_path)
 
-    return FileResponse(
-        file_path,
-        media_type="image/webp" if filename.lower().endswith(".webp") else None,
-        filename=filename,
-        content_disposition_type="inline"
-    )
+    files_directory = (
+        UPLOAD_ROOT
+        / safe_session_id
+        / "files"
+    ).resolve()
+
+    file_path = (
+        files_directory
+        / safe_relative_path
+    ).resolve()
+
+    try:
+        file_path.relative_to(files_directory)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image path.",
+        ) from error
+
+    if not file_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Image not found.",
+        )
+
+    return FileResponse(file_path)
 
 @app.get("/search")
-def search_images(q: str):
-    with open("data/images.json", "r", encoding="utf-8") as file:
+def search_images(
+    q: str,
+    session_id: str,
+):
+    safe_session_id = validate_session_id(session_id)
+
+    index_path = (
+        UPLOAD_ROOT
+        / safe_session_id
+        / "images.json"
+    )
+
+    if not index_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "No indexed folder was found. "
+                "Upload a folder before searching."
+            ),
+        )
+
+    with index_path.open("r", encoding="utf-8") as file:
         images = json.load(file)
+
+    cleaned_query = q.strip()
+
+    if not cleaned_query:
+        return {
+            "query": q,
+            "count": 0,
+            "results": [],
+        }
 
     scored_results = []
 
     for image in images:
-        score = score_image(image, q)
+        score = score_image(image, cleaned_query)
 
         if score > 0:
             image_with_score = image.copy()
             image_with_score["score"] = score
             scored_results.append(image_with_score)
 
-    scored_results.sort(key=lambda item: item["score"], reverse=True)
+    scored_results.sort(
+        key=lambda item: item["score"],
+        reverse=True,
+    )
+
     return {
-        "query": q,
+        "query": cleaned_query,
         "count": len(scored_results),
-        "results": scored_results
+        "results": scored_results,
     }
 
 @app.get("/search-online")
@@ -151,6 +232,43 @@ async def search_online_images(
         "count": len(results),
         "results": results,
     }
+
+@app.get("/preview-online")
+async def preview_online_image(
+    url: str,
+    background_tasks: BackgroundTasks,
+):
+    try:
+        temporary_path = await download_online_image(url)
+
+        verify_image_file(temporary_path)
+
+        media_type, _ = guess_type(str(temporary_path))
+
+        background_tasks.add_task(
+            temporary_path.unlink,
+            missing_ok=True
+        )
+
+        return FileResponse(
+            temporary_path,
+            media_type=media_type or "application/octet-stream",
+            background=background_tasks
+        )
+
+    except HTTPException:
+        # Backend could not retrieve the image.
+        # Let the user's browser try the original image URL directly.
+        return RedirectResponse(
+            url=url,
+            status_code=302
+        )
+
+    except Exception:
+        return RedirectResponse(
+            url=url,
+            status_code=302
+        )
 
 def validate_public_host(url: str) -> None:
     parsed = urlparse(url)
@@ -389,6 +507,40 @@ def convert_image_file(
 
     return output_path
 
+def validate_session_id(session_id: str) -> str:
+    try:
+        return str(UUID(session_id))
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid upload session ID.",
+        ) from error
+
+
+def sanitize_relative_path(relative_path: str) -> Path:
+    normalized = relative_path.replace("\\", "/")
+    path = Path(normalized)
+
+    if path.is_absolute() or ".." in path.parts:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid relative file path.",
+        )
+
+    safe_parts = [
+        part
+        for part in path.parts
+        if part not in {"", ".", "/"}
+    ]
+
+    if not safe_parts:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid uploaded filename.",
+        )
+
+    return Path(*safe_parts)
+
 @app.post("/open-file")
 def open_file(request: OpenFileRequest):
 
@@ -399,33 +551,80 @@ def open_file(request: OpenFileRequest):
     return {"status": "success"}
 
 @app.post("/convert-image")
-def convert_image(request: ConvertImageRequest):
+def convert_image(request: UploadedImageConversionRequest):
     output_format = request.output_format.lower()
 
+    # 1. Validate requested output format
     if output_format not in SUPPORTED_OUTPUTS:
-        return {"error": "Unsupported output format"}
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported output format"
+        )
 
-    input_path = IMAGE_DIR / request.filename
+    # 2. Validate session ID
+    safe_session_id = validate_session_id(
+        request.session_id
+    )
 
-    if not input_path.exists():
-        return {"error": "File does not exist"}
+    # 3. Validate relative image path
+    safe_relative_path = sanitize_relative_path(
+        request.relative_path
+    )
 
-    image = Image.open(input_path)
+    # 4. Locate image inside this user's upload session
+    input_path = (
+        UPLOAD_ROOT
+        / safe_session_id
+        / "files"
+        / safe_relative_path
+    )
 
-    # Convert transparency safely for JPG/PDF
+    if not input_path.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail="Uploaded image not found."
+        )
+
+    # 5. Open image
+    try:
+        image = Image.open(input_path)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to open image."
+        )
+
+    # 6. Convert transparency safely for JPG/PDF
     if output_format in {"jpg", "jpeg", "pdf"}:
         image = image.convert("RGB")
 
-    output_filename = f"{input_path.stem}_{uuid.uuid4().hex[:8]}.{output_format}"
+    # 7. Generate unique output filename
+    output_filename = (
+        f"{input_path.stem}_"
+        f"{uuid.uuid4().hex[:8]}."
+        f"{output_format}"
+    )
+
     output_path = CONVERTED_DIR / output_filename
 
+    # 8. Determine Pillow format
     save_format = output_format.upper()
 
-    if output_format == "jpg":
+    if output_format in {"jpg", "jpeg"}:
         save_format = "JPEG"
 
-    image.save(output_path, save_format)
+    # 9. Save converted image
+    try:
+        image.save(output_path, save_format)
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Image conversion failed."
+        )
+    finally:
+        image.close()
 
+    # 10. Return download URL
     return {
         "status": "success",
         "filename": output_filename,
@@ -514,5 +713,132 @@ async def convert_online_image(
     finally:
         if temporary_path and temporary_path.exists():
             temporary_path.unlink()
+
+@app.post("/upload-folder")
+async def upload_folder(
+    session_id: Annotated[str, Form()],
+    files: Annotated[list[UploadFile], File()],
+    relative_paths: Annotated[list[str], Form()],
+):
+    safe_session_id = validate_session_id(session_id)
+
+    if len(files) != len(relative_paths):
+        raise HTTPException(
+            status_code=400,
+            detail="Each uploaded file must include a relative path.",
+        )
+
+    if not files:
+        raise HTTPException(
+            status_code=400,
+            detail="No files were uploaded.",
+        )
+
+    if len(files) > MAX_FILES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"A maximum of {MAX_FILES} images may be uploaded.",
+        )
+
+    session_directory = UPLOAD_ROOT / safe_session_id
+    files_directory = session_directory / "files"
+    index_path = session_directory / "images.json"
+
+    if session_directory.exists():
+        shutil.rmtree(session_directory)
+
+    files_directory.mkdir(parents=True, exist_ok=True)
+
+    total_size = 0
+    saved_count = 0
+
+    try:
+        for uploaded_file, supplied_relative_path in zip(
+            files,
+            relative_paths,
+        ):
+            if uploaded_file.content_type not in ALLOWED_IMAGE_TYPES:
+                continue
+
+            safe_relative_path = sanitize_relative_path(
+                supplied_relative_path
+            )
+
+            destination = files_directory / safe_relative_path
+            destination.parent.mkdir(parents=True, exist_ok=True)
+
+            file_size = 0
+
+            with destination.open("wb") as output_file:
+                while chunk := await uploaded_file.read(1024 * 1024):
+                    file_size += len(chunk)
+                    total_size += len(chunk)
+
+                    if file_size > MAX_FILE_SIZE:
+                        raise HTTPException(
+                            status_code=413,
+                            detail=(
+                                f"{uploaded_file.filename} exceeds "
+                                "the per-file size limit."
+                            ),
+                        )
+
+                    if total_size > MAX_TOTAL_SIZE:
+                        raise HTTPException(
+                            status_code=413,
+                            detail="The folder exceeds the total upload limit.",
+                        )
+
+                    output_file.write(chunk)
+
+            saved_count += 1
+
+        if saved_count == 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No supported image files were uploaded.",
+            )
+
+        indexed_records = build_image_index(
+            image_directory=files_directory,
+            output_file=index_path,
+            preview_base_url=(
+                f"/uploaded-images/{safe_session_id}"
+            ),
+        )
+
+        return {
+            "status": "success",
+            "session_id": safe_session_id,
+            "uploaded_count": saved_count,
+            "indexed_count": len(indexed_records),
+        }
+
+    except Exception:
+        if session_directory.exists():
+            shutil.rmtree(session_directory)
+
+        raise
+
+    finally:
+        for uploaded_file in files:
+            await uploaded_file.close()
+
+@app.delete("/uploaded-folder/{session_id}")
+def delete_uploaded_folder(session_id: str):
+    safe_session_id = validate_session_id(session_id)
+
+    session_directory = (
+        UPLOAD_ROOT
+        / safe_session_id
+    )
+
+    if session_directory.exists():
+        shutil.rmtree(session_directory)
+
+    return {
+        "status": "success",
+        "removed": True,
+    }
 
 app.mount("/converted", StaticFiles(directory="static/converted"), name="converted")

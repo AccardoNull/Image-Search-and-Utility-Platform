@@ -2,62 +2,62 @@
   {
     "id": 1,
     "filename": "black_cat_sleeping.jpg",
+    "relative_path": "black_cat_sleeping.jpg",
+    "filepath": "black_cat_sleeping.jpg",
+    "extension": "jpg",
+    "size": 164935,
     "url": "/images/black_cat_sleeping.jpg",
-    "filepath": "static\\images\\black_cat_sleeping.jpg",
-    "extension": ".jpg",
-    "size_bytes": 164935,
-    "last_modified": "2026-06-10T12:23:47.446047",
+    "description": "black cat sleeping",
     "tags": [
       "black",
       "cat",
       "sleeping"
-    ],
-    "description": "black cat sleeping"
+    ]
   },
   {
     "id": 2,
     "filename": "city_road_construction.jpg",
+    "relative_path": "city_road_construction.jpg",
+    "filepath": "city_road_construction.jpg",
+    "extension": "jpg",
+    "size": 140542,
     "url": "/images/city_road_construction.jpg",
-    "filepath": "static\\images\\city_road_construction.jpg",
-    "extension": ".jpg",
-    "size_bytes": 140542,
-    "last_modified": "2026-06-10T12:19:39.935267",
+    "description": "city road construction",
     "tags": [
       "city",
-      "road",
-      "construction"
-    ],
-    "description": "city road construction"
+      "construction",
+      "road"
+    ]
   },
   {
     "id": 3,
     "filename": "Norway_Mountain_Cloud_Lightning.webp",
+    "relative_path": "Norway_Mountain_Cloud_Lightning.webp",
+    "filepath": "Norway_Mountain_Cloud_Lightning.webp",
+    "extension": "webp",
+    "size": 55358,
     "url": "/images/Norway_Mountain_Cloud_Lightning.webp",
-    "filepath": "static\\images\\Norway_Mountain_Cloud_Lightning.webp",
-    "extension": ".webp",
-    "size_bytes": 55358,
-    "last_modified": "2026-06-22T13:58:10.686462",
+    "description": "Norway Mountain Cloud Lightning",
     "tags": [
-      "norway",
-      "mountain",
       "cloud",
-      "lightning"
-    ],
-    "description": "norway mountain cloud lightning"
+      "lightning",
+      "mountain",
+      "norway"
+    ]
   },
   {
     "id": 4,
     "filename": "white_cat_stretching.webp",
+    "relative_path": "white_cat_stretching.webp",
+    "filepath": "white_cat_stretching.webp",
+    "extension": "webp",
+    "size": 59100,
     "url": "/images/white_cat_stretching.webp",
-    "filepath": "static\\images\\white_cat_stretching.webp",
-    "extension": ".webp",
-    "size_bytes": 59100,
-    "last_modified": "2026-06-22T14:11:22.451949",
+    "description": "white cat stretching",
     "tags": [
-      "white",
       "cat",
-      "stretching"
-    ],
-    "description": "white cat stretching"
+      "stretching",
+      "white"
+    ]
   }
 ]
