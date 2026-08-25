@@ -73,6 +73,9 @@ Built with a React frontend and FastAPI backend, the application generates detai
 - React-based frontend with real-time visualization updates
 - Automated testing and continuous integration using Pytest, Git and GitHub Actions
 
+#### Screenshots
+![screenshot4](ImageFolder/Screenshot4.jpg)  
+
 ## Local Setup
 ### Activate frontend and backend servers
 Local Windows execution mode 
