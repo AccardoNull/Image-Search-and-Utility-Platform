@@ -238,36 +238,64 @@ async def preview_online_image(
     url: str,
     background_tasks: BackgroundTasks,
 ):
+    temporary_path: Path | None = None
+
     try:
+        # Download using the existing protected downloader
         temporary_path = await download_online_image(url)
 
+        # Confirm that the downloaded resource is really an image
         verify_image_file(temporary_path)
 
-        media_type, _ = guess_type(str(temporary_path))
+        # Determine the actual image format
+        with Image.open(temporary_path) as image:
+            image_format = image.format
 
+        media_types = {
+            "JPEG": "image/jpeg",
+            "PNG": "image/png",
+            "WEBP": "image/webp",
+            "GIF": "image/gif",
+            "BMP": "image/bmp",
+            "TIFF": "image/tiff",
+            "ICO": "image/x-icon",
+        }
+
+        media_type = media_types.get(
+            image_format,
+            "application/octet-stream",
+        )
+
+        # Delete temp file AFTER FileResponse finishes
         background_tasks.add_task(
             temporary_path.unlink,
-            missing_ok=True
+            missing_ok=True,
         )
 
         return FileResponse(
-            temporary_path,
-            media_type=media_type or "application/octet-stream",
-            background=background_tasks
+            path=temporary_path,
+            media_type=media_type,
+            headers={
+                "Content-Disposition": "inline"
+            },
+            background=background_tasks,
         )
 
     except HTTPException:
-        # Backend could not retrieve the image.
-        # Let the user's browser try the original image URL directly.
+        # If Railway cannot fetch the image,
+        # let the user's browser try the original URL.
         return RedirectResponse(
             url=url,
-            status_code=302
+            status_code=302,
         )
 
     except Exception:
+        if temporary_path and temporary_path.exists():
+            temporary_path.unlink(missing_ok=True)
+
         return RedirectResponse(
             url=url,
-            status_code=302
+            status_code=302,
         )
 
 def validate_public_host(url: str) -> None:
